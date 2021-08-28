@@ -19,7 +19,7 @@ def videoToFrames(cam, startFrame, endFrame):
         print('Error: Creating directory ')
 
     while (True):
-        cam.set(cv2.CAP_PROP_POS_MSEC, (startFrame * 300))
+        cam.set(cv2.CAP_PROP_POS_MSEC, (startFrame * 500))
         # reading from frame
         hasFrame, frame = cam.read()
 

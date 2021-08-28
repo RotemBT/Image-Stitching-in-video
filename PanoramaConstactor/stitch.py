@@ -1,71 +1,75 @@
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import features
 
+"""
+1.Import 2 images
+2.convert to gray scale
+3.Initiate ORB detector
+4.Find key points and describe them
+5.Match keypoints- Brute force matcher
+6.RANSAC(reject bad keypoints)
+7.Register two images (use homography) 
+"""
 
-def blendingMask(height, width, barrier, smoothing_window, left_biased=True):
+
+def blendingMask(height, width, barrier, smoothingWindow, leftBiased=True):
     """
     Make a mask of required height width and barrier.
     :param height:
     :param width:
     :param barrier:
-    :param smoothing_window:
-    :param left_biased:
+    :param smoothingWindow:
+    :param leftBiased:
     :return:
     """
     assert barrier < width
     # Make a emtpy mask with required size
     mask = np.zeros((height, width))
     # Fill the mask
-    offset = int(smoothing_window / 2)
+    offset = int(smoothingWindow / 2)
     try:
-        if left_biased:
+        if leftBiased:
             mask[:, barrier - offset: barrier + offset + 1] = np.tile(
-                np.linspace(1, 0, 2 * offset + 1).T, (height, 1)
-            )
+                np.linspace(1, 0, 2 * offset + 1).T, (height, 1))
             mask[:, : barrier - offset] = 1
         else:
             mask[:, barrier - offset: barrier + offset + 1] = np.tile(
-                np.linspace(0, 1, 2 * offset + 1).T, (height, 1)
-            )
+                np.linspace(0, 1, 2 * offset + 1).T, (height, 1))
             mask[:, barrier + offset:] = 1
     except BaseException:
-        if left_biased:
+        if leftBiased:
             mask[:, barrier - offset: barrier + offset + 1] = np.tile(
-                np.linspace(1, 0, 2 * offset).T, (height, 1)
-            )
+                np.linspace(1, 0, 2 * offset).T, (height, 1))
             mask[:, : barrier - offset] = 1
         else:
             mask[:, barrier - offset: barrier + offset + 1] = np.tile(
-                np.linspace(0, 1, 2 * offset).T, (height, 1)
-            )
+                np.linspace(0, 1, 2 * offset).T, (height, 1))
             mask[:, barrier + offset:] = 1
 
     return cv2.merge([mask, mask, mask])
 
 
-def panoramaBlending(destinationImage, sourceImage, widthDestination, side, showStep=False):
+def panoramaBlending(destinationImage, sourceImage, widthDestination, side):
     """
-    Given two aligned images, and the @width_dst is width of dst_img
+    Given two aligned images, and the widthDestination is width of destination Image
     before resize, that indicates where there is the discontinuity between the images,
     this function produce a smoothed transient in the overlapping.
-    @smoothing_window is a parameter that determines the width of the transient
-    left_biased is a flag that determines whether it is masked the left image,
+    smoothing_window is a parameter that determines the width of the transient
+    left biased is a flag that determines whether it is masked the left image,
     or the right one
     """
 
     height, width, _ = destinationImage.shape
     smoothing_window = int(widthDestination / 8)
     barrier = widthDestination - int(smoothing_window / 2)
-    mask1 = blendingMask(height, width, barrier, smoothing_window=smoothing_window, left_biased=True)
-    mask2 = blendingMask(height, width, barrier, smoothing_window=smoothing_window, left_biased=False)
+    mask1 = blendingMask(height, width, barrier, smoothingWindow=smoothing_window, leftBiased=True)
+    mask2 = blendingMask(height, width, barrier, smoothingWindow=smoothing_window, leftBiased=False)
 
-    if showStep:
-        nonBlend = sourceImage + destinationImage
-    else:
-        nonBlend = None
-        leftSide = None
-        rightSide = None
+    nonBlend = None
+    leftSide = None
+    rightSide = None
 
     if side == "left":
         destinationImage = cv2.flip(destinationImage, 1)
@@ -74,26 +78,19 @@ def panoramaBlending(destinationImage, sourceImage, widthDestination, side, show
         sourceImage = sourceImage * mask2
         panorama = sourceImage + destinationImage
         panorama = cv2.flip(panorama, 1)
-        if showStep:
-            leftSide = cv2.flip(sourceImage, 1)
-            rightSide = cv2.flip(destinationImage, 1)
     else:
         destinationImage = destinationImage * mask1
         sourceImage = sourceImage * mask2
         panorama = sourceImage + destinationImage
-        if showStep:
-            leftSide = destinationImage
-            rightSide = sourceImage
 
     return panorama, nonBlend, leftSide, rightSide
 
 
-def warpTwoImages(sourceImage, destinationImage, showStep=False):
+def warpTwoImages(sourceImage, destinationImage):
     """
     Wrap two images with a suitable homography.
     :param sourceImage: 
-    :param destinationImage: 
-    :param showStep:
+    :param destinationImage:
     :return: 
     """
     # Generate Homography matrix.
@@ -127,8 +124,8 @@ def warpTwoImages(sourceImage, destinationImage, showStep=False):
 
         # Ravel is a np function that takes a 2 or more dim array and changes it to flatted array.
         # Find max min of x,y coordinate
-        [xMin, yMin] = np.int64(listOfPoints.min(axis=0).ravel() - 0.5)
-        [_, yMax] = np.int64(listOfPoints.max(axis=0).ravel() + 0.5)
+        [xMin, yMin] = np.int32(listOfPoints.min(axis=0).ravel() - 0.5)
+        [_, yMax] = np.int32(listOfPoints.max(axis=0).ravel() + 0.5)
         translationDistance = [-xMin, -yMin]
 
         # Top left point of image which apply homography matrix, which has x coordinate < 0, so source image
@@ -159,7 +156,7 @@ def warpTwoImages(sourceImage, destinationImage, showStep=False):
 
         # Blending panorama
         panorama, nonBlend, leftSide, rightSide = panoramaBlending(
-            destinationImageResized, sourceImageWarped, widthDestination, side, showStep=showStep)
+            destinationImageResized, sourceImageWarped, widthDestination, side)
 
         # Cropping black space
         panorama = crop(panorama, heightDestination, listOfPoints)

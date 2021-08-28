@@ -1,10 +1,11 @@
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def findAndDescribeFeatures(image):
     """
-    find and describe features of @image,
+    find and describe features of image,
     ORB algorithm is used.
     @Return keypoints and features of img.
     """
@@ -52,19 +53,25 @@ def generateHomography(sourceImage, destinationImage, ransacRep=5.0):
     destinationKeyPoints, destinationFeatures = findAndDescribeFeatures(destinationImage)
     # Find the best matches between the keypoints.
     bestMatches = matchFeatures(sourceFeatures, destinationFeatures)
-
+    # Convert keypoints to an argument for findHomography.
+    # match.queryIdx give the index of the features in the list of query features
+    # the list of the query features is of the image we would like to spread
+    # the others is the training features for training, this is the routine before homography
     sourcePoints = np.float32([sourceKeypoints[m.queryIdx].pt for m in bestMatches]).reshape(-1, 1, 2)
     destinationPoints = np.float32([destinationKeyPoints[m.trainIdx].pt for m in bestMatches]).reshape(-1, 1, 2)
 
     homography, mask = cv2.findHomography(sourcePoints, destinationPoints, cv2.RANSAC, ransacRep)
+    # plt.figure()
+    # plt.imshow(drawKeypoints(sourceImage, sourceKeypoints)[:,:,::-1])
+    # plt.imshow(drawMatches(sourceImage, sourceKeypoints, destinationImage, destinationKeyPoints, bestMatches, mask)
+    # [:,:,::-1])
+    # plt.show()
     matchesMask = mask.ravel().tolist()
     return homography, matchesMask
 
 
 def drawKeypoints(img, keypoints):
-    img1 = img
-    cv2.drawKeypoints(img, keypoints, img1, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    return img1
+    return cv2.drawKeypoints(img, keypoints, None, flags=None)
 
 
 def drawMatches(sourceImage, sourceKeypoints, destinationImage, destinationKeypoints, matches, matchesMask):
