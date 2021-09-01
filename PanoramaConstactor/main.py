@@ -12,7 +12,7 @@ print(path)
 # Extract number of frames in half second difference.
 camera = cv2.VideoCapture(path)
 # Enter second of start cutting and and (second*2) of ending cutting
-extractImages.videoToFrames(camera, 2, 8)
+extractImages.videoToFrames(camera, 0, 6)
 # Calculate execution time
 print("Processing....")
 start = timeit.default_timer()
